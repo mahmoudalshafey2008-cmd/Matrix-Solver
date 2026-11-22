@@ -1,7 +1,11 @@
 #fractions stores numbers exactly (1/3 stays 1/3) so we avoid float rounding errors
 import fractions
+
+
 #maximum number of rows (and variables) the solver accepts
 MAX = 10
+
+
 #function checks the raw input and returns a new matrix of Fractions
 def prepare_matrix(raw_matrix):
     length = len(raw_matrix)
@@ -26,13 +30,14 @@ def prepare_matrix(raw_matrix):
     #the finished matrix goes back so other functions can use it
     return new_matrix
 
+
+
 #function draws the matrix in a neat manner like in pen and paper
 #it will take in matrix (list of lists) and make a string copy of it
 #the copy will have the same look as if we drew it in paper
 def draw_matrix(matrix):
-    #we extract the number of rows from the matrix
     rows = len(matrix)
-    #we extract the number of columns from the matrix by taking the length of any single element in matrix ([0] in this case)
+    #we extract the number of columns from the matrix
     columns = len(matrix[0])
     #type string that will have the elements of the matrix put into
     drawing = ""
@@ -44,16 +49,15 @@ def draw_matrix(matrix):
         for column in range(columns):
             line = line + str(matrix[row][column]) 
             #condition that will check if the coefficient part is over
+            #meaning the next element is the constant
             if column == columns-2:
-                #if coefficient part is over (column == columns-2) then the next element is the constant
                 #so we add | to seperate them if the statment is successful
                 line = line + "|"
-            # else if the element is a coeficient
+            # else if the element is a coefficient we don't use "|"
             elif column < columns-2:
-                #if the element is coeficient (column < columns-2)
-                #then we add 2 spaces ("  ") to the line string to put space between elements like in paper
+                # we add 2 spaces ("  ") to the line string instead
                 line = line + "  "
-        #after we loop through all the columns in a row we finally close the line    
+        #we close the line after loop   
         line = line + "]"
         #we add the line (row) to the drawing string
         drawing = drawing + line
@@ -64,10 +68,14 @@ def draw_matrix(matrix):
     return drawing
 #note on the draw function: "the output is correct but the rows are uneven in case of fractions or not all elements being of the same power of ten (all elements of the matrix being the same digit like all being single or double digit)"
 
+
+
 #these are some primary operation functions
 #each function has a "steps" parameter which is a list that will mainly store strings
 #each function will append to the steps list what they've done
 #this is to achieve a step by step output when solving a matrix
+
+
 
 #function switches 2 rows of a matrix
 def row_switch(matrix, i, j, steps):
@@ -75,12 +83,16 @@ def row_switch(matrix, i, j, steps):
     matrix[i], matrix[j] = matrix[j], matrix[i]
     #append the switch step with the edited matrix to steps
     steps.append("R" + str(i+1) + " and R" + str(j+1) + " switched\n" + draw_matrix(matrix))
+
+
 #function multiplies a matrix row by a constant
 def row_multiply(matrix, row, const, steps):
     for col in range (len(matrix[row])):
         matrix [row] [col] *= const
     #append to steps list with new matrix
     steps.append(str(const) + "R" + str(row+1) + " ==> R" + str(row+1) + "\n" + draw_matrix(matrix))
+
+
 
 #function adds 2 rows, a target row  and a multiplicant of a source row
 def row_addition(matrix, target_row, source_row, const, steps):
@@ -101,18 +113,182 @@ def row_addition(matrix, target_row, source_row, const, steps):
         number = str(const)
     #small feature so if we don't multiply (multiply by 1) it doesn't show in steps
     #(R1 + 1R2 becomes R1 + R2)
-    if const == 1:
+    if const == 1 or const == -1:
         number = ""
     #lastly like all other primary row functions we append to steps list
     steps.append("R" + str(target_row+1) + sign + number + "R" + str(source_row+1) + " ==> R" + str(target_row+1) + "\n" + draw_matrix(matrix))
 
-#test block (temp)
-if __name__ == "__main__":
-    steps = []
-    m = prepare_matrix([[1, 2, 5], [3, 4, 6]])
-    row_addition(m, 1, 0, -3, steps)
-    row_multiply(m, 0, 3, steps)
-    row_switch(m, 0, 1, steps)
-    for s in steps:
-        print(s)
 
+
+#function solves given matrix using Gauss elimination
+def solve_Gauss(matrix):
+    steps = []
+    steps.append("Starting matrix\n" + draw_matrix(matrix))
+    #we start with pivots at the beginning of the matrix
+    pivot_row = 0
+    for pivot_column in range(len(matrix)):
+        #variable that will hold the row value of the first non zero value in a column
+        #will hold an initial value any negative number will work
+        found = -1
+        #check column in each row, starting from pivot to matrix length - 1
+        for row in range(pivot_row, len(matrix)):
+            #if the column has a non zero value record the row in found
+            if matrix[row][pivot_column] != 0:
+                found = row
+                break
+        #all of the column elements were 0 then we skip this iteration
+        if found == -1:
+            continue
+        #if the first non zero row isn't pivot
+        if found != pivot_row:
+            #we switch the found row to the pivot row
+            row_switch(matrix, pivot_row, found, steps)
+        #if the first non zero element in the pivot row isn't equal to one
+        if matrix[pivot_row][pivot_column] != 1: 
+           #we multiply that element so it becomes equal to one
+           row_multiply(matrix, pivot_row, 1/matrix[pivot_row][pivot_column], steps)
+        #loop to check if the elements below the leading one in our pivot row are zero 
+        for row in range(pivot_row+1, len(matrix)):
+            #if they aren't zero
+            if matrix[row][pivot_column] != 0:
+                #we perform addition with "row" as target
+                #we multiply the pivot row by the negative of the element we want to clear (make it equal 0) devided by the leading 1
+                #for example we have x[0][0] = 1 and x[1][0] = 3
+                #so we multiply x[0][0] by -3 (-x[1][0]/x[0][0]) and perform addition
+                row_addition(matrix, row, pivot_row, -matrix[row][pivot_column]/matrix[pivot_row][pivot_column], steps)
+        #move to the next pivot 
+        pivot_row += 1
+    #check row by row regardless of pivot if a row is all 0 except the last element (the constant)
+    #this is to see if the matrix has no solutions
+    for row in range(len(matrix)):
+        all_zero = True
+        for col in range(len(matrix)):
+            if matrix[row][col] != 0:
+                all_zero = False
+        if all_zero and matrix[row][-1] != 0:
+            steps.append("R" + str(row + 1) + " reads 0 = " + str(matrix[row][-1]) + ", so there is no solution")
+            return {"outcome": "none", "steps": steps, "solution": None}
+    #we check to see if the number of rows is less than the number of coeffiecient elements (infinite solutions)
+    if pivot_row < len(matrix):
+        steps.append("fewer pivots than variables, so there are infinitely many solutions")
+        return {"outcome": "infinite", "steps": steps, "solution": None}
+    #matrix has a unique solution
+    else:
+        #assign a list with length of matrix that will hold our solution (x1, x2, x3... etc)
+        x = [0] * len(matrix)
+        #loop over the matrix from the bottom up
+        for row in range(len(matrix) - 1, -1, -1):
+            #total is the constant in our matrix row
+            total = matrix[row][-1]
+            text = str(total)
+            #columns here are to the right side of our leading ones
+            for column in range(row + 1, len(matrix)):
+                #find the value of x
+                total = total - matrix[row][column] * x[column]
+                #record our steps
+                text = text + " - (" + str(matrix[row][column]) + " * " + str(x[column]) + ")"
+            #after we finish calculating the x value for that row we assign its value to be equal to total
+            x[row] = total
+            #this if block exists because the last row has nothing to calculate, it just gives x = value, flat out
+            if row < len(matrix) - 1:
+                text = text + " = " + str(x[row])
+            steps.append("x" + str(row + 1) + " = " + text)
+        return {"outcome": "unique", "steps": steps, "solution": x}
+
+
+#Gauss jordan function, this functions works like Gauss so i won't comment in it, i will highlight the diffirences when they come
+def solve_Gauss_jordan(matrix):
+    steps = []
+    steps.append("Starting matrix\n" + draw_matrix(matrix))
+    pivot_row = 0
+    for pivot_column in range(len(matrix)):
+        found = -1
+        for row in range(pivot_row, len(matrix)):
+            if matrix[row][pivot_column] != 0:
+                found = row
+                break
+        if found == -1:
+            continue
+        if found != pivot_row:
+            row_switch(matrix, pivot_row, found, steps)
+        if matrix[pivot_row][pivot_column] != 1: 
+           row_multiply(matrix, pivot_row, 1/matrix[pivot_row][pivot_column], steps)
+        for row in range(len(matrix)):
+            #we also added (row != pivot_row) so to only affect the rows above/below the pivot and not the pivot itself
+            if row != pivot_row and matrix[row][pivot_column] != 0:
+                row_addition(matrix, row, pivot_row, -matrix[row][pivot_column]/matrix[pivot_row][pivot_column], steps)
+        pivot_row += 1
+    for row in range(len(matrix)):
+        all_zero = True
+        for col in range(len(matrix)):
+            if matrix[row][col] != 0:
+                all_zero = False
+        if all_zero and matrix[row][-1] != 0:
+            steps.append("R" + str(row + 1) + " reads 0 = " + str(matrix[row][-1]) + ", so there is no solution")
+            return {"outcome": "none", "steps": steps, "solution": None}
+    if pivot_row < len(matrix):
+        steps.append("fewer pivots than variables, so there are infinitely many solutions")
+        return {"outcome": "infinite", "steps": steps, "solution": None}
+    #in here the block is really simple
+    #every row has only 1 coefficient and 1 constant
+    #that elemenates all the need to calculate the value of x and we just need to read and store it
+    else:
+        x = [0] * len(matrix)
+        for row in range(len(matrix) - 1, -1, -1):
+            total = matrix[row][-1]
+            text = str(total)
+            x[row] = total
+            steps.append("x" + str(row + 1) + " = " + text)
+        return {"outcome": "unique", "steps": steps, "solution": x}
+
+
+#solve function dictates what elimination we use
+#just simple case statments we don't need to explain this part
+def solve(raw_matrix, method):
+    matrix = prepare_matrix(raw_matrix)
+    match method:
+        case "gauss":
+            return solve_Gauss(matrix)
+        case "jordan":
+            return solve_Gauss_jordan(matrix)
+        case _:
+            raise ValueError("unknown method")
+
+
+#show result just takes in our solution and prints out the steps and the x values if the matrix has a unique solution
+def show_result(result):
+    for step in result["steps"]:
+        print(step)
+        print()
+    if result["outcome"] == "unique":
+        print("Solution:")
+        for i in range(len(result["solution"])):
+            print("x" + str(i + 1) + " = " + str(result["solution"][i]))
+
+
+def main():
+    #any wrong input raises a ValueError, which is caught at the bottom and printed
+    try:
+        n = int(input("Number of variables (1 to " + str(MAX) + "): "))
+        if n < 1 or n > MAX:
+            raise ValueError("the number must be between 1 and " + str(MAX))
+        #read the rows, each one is a list of the numbers typed (split by spaces)
+        raw = []
+        for row in range(n):
+            raw.append(input("Row " + str(row + 1) + ": ").split())
+        choice = input("Method (1 = Gauss, 2 = Gauss-Jordan, 3 = both): ")
+        if choice != "1" and choice != "2" and choice != "3":
+            raise ValueError("method must be 1, 2 or 3")
+        #solve builds a fresh matrix every call so both methods start from the same input
+        if choice == "1" or choice == "3":
+            print("\n=== Gaussian elimination ===\n")
+            show_result(solve(raw, "gauss"))
+        if choice == "2" or choice == "3":
+            print("\n=== Gauss-Jordan elimination ===\n")
+            show_result(solve(raw, "jordan"))
+    except ValueError as error:
+        print("error: " + str(error))
+
+
+if __name__ == "__main__":
+    main()
