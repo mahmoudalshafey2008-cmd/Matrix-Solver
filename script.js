@@ -257,6 +257,24 @@ clearHistoryBtn.addEventListener("click", () => {
     renderHistory();
 });
 
+matrixGrid.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+
+    const inputs = Array.from(matrixGrid.querySelectorAll("input.matrix-cell"));
+    const currentIndex = inputs.indexOf(event.target);
+
+    if (currentIndex === -1) return;
+
+    event.preventDefault();
+
+    if (currentIndex < inputs.length - 1) {
+        inputs[currentIndex + 1].focus();
+        inputs[currentIndex + 1].select();
+    } else {
+        solveBtn.click();
+    }
+});
+
 // Initialize default 3x3 grid and history
 buildGrid(3);
 renderHistory();
