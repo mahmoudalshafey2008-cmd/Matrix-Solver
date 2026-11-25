@@ -16,15 +16,20 @@ def api_config():
 
 @app.route("/api/solve", methods=["POST"])
 def api_solve():
+    # Parse incoming JSON body from the browser
     data = request.get_json(silent=True) or {}
     raw_matrix = data.get("matrix")
     method = data.get("method", "gauss")
+    # Read the explicit variable count sent by the frontend (defaults to None if omitted)
+    num_vars = data.get("num_vars")
 
     if not isinstance(raw_matrix, list):
         return jsonify({"error": "Invalid matrix payload."}), 400
 
     try:
-        result = solve(raw_matrix, method)
+        # Forward num_vars so rectangular matrices (e.g., 2 equations x 3 variables) are validated properly
+        result = solve(raw_matrix, method, num_vars=num_vars)
+        # Convert Fraction objects in the solution list to strings so Flask can serialize them to JSON
         serialized_solution = (
             [str(val) for val in result["solution"]]
             if result["solution"] is not None

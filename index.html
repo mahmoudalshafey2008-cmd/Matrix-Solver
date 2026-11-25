@@ -18,6 +18,13 @@
         <div class="layout">
             <main class="card">
                 <div class="controls">
+                    <!-- New input controlling the number of rows (equations) independently -->
+                    <div class="control-group">
+                        <label for="eqCount">Equations (m):</label>
+                        <input type="number" id="eqCount" min="1" max="10" value="2" />
+                    </div>
+
+                    <!-- Existing input now controls the number of variable columns (unknowns) -->
                     <div class="control-group">
                         <label for="varCount">Variables (n):</label>
                         <input type="number" id="varCount" min="1" max="10" value="3" />

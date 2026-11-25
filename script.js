@@ -1,3 +1,4 @@
+const eqCountInput = document.getElementById("eqCount");
 const varCountInput = document.getElementById("varCount");
 const methodSelect = document.getElementById("methodSelect");
 const matrixGrid = document.getElementById("matrixGrid");
@@ -12,30 +13,32 @@ const clearHistoryBtn = document.getElementById("clearHistoryBtn");
 
 const HISTORY_KEY = "matrix_solver_history_v1";
 
-function buildGrid(n, preset = null) {
+function buildGrid(rows, cols, preset = null) {
     matrixGrid.innerHTML = "";
-    // n coefficient columns + 1 divider + 1 constant column
-    matrixGrid.style.gridTemplateColumns = `repeat(${n}, auto) auto auto`;
+    // Define CSS grid columns: `cols` variable inputs + 1 vertical divider + 1 constant column
+    matrixGrid.style.gridTemplateColumns = `repeat(${cols}, auto) auto auto`;
 
-    // Header row
-    for (let col = 0; col < n; col++) {
+    // Render column headers x1, x2, ..., x_cols
+    for (let c = 0; c < cols; c++) {
         const header = document.createElement("div");
         header.className = "grid-header";
-        header.textContent = `x${col + 1}`;
+        header.textContent = `x${c + 1}`;
         matrixGrid.appendChild(header);
     }
-    const spacer = document.createElement("div");
-    matrixGrid.appendChild(spacer);
+    // Empty header cell above the vertical divider line
+    matrixGrid.appendChild(document.createElement("div"));
 
+    // Header cell for the constants column (b)
     const constHeader = document.createElement("div");
     constHeader.className = "grid-header";
     constHeader.textContent = "b";
     matrixGrid.appendChild(constHeader);
 
-    // Input rows
-    for (let row = 0; row < n; row++) {
-        for (let col = 0; col < n + 1; col++) {
-            if (col === n) {
+    // Build `rows` equation rows, each having `cols + 1` input cells
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols + 1; c++) {
+            // Insert the vertical augmented-matrix divider right before the last column (b)
+            if (c === cols) {
                 const divider = document.createElement("div");
                 divider.className = "divider";
                 matrixGrid.appendChild(divider);
@@ -44,26 +47,30 @@ function buildGrid(n, preset = null) {
             input.type = "text";
             input.className = "matrix-cell";
             input.placeholder = "0";
-            input.dataset.row = row;
-            input.dataset.col = col;
-            if (preset && preset[row] && preset[row][col] !== undefined) {
-                input.value = preset[row][col];
+            // Store row and column coordinates on each input for easy lookup later
+            input.dataset.row = r;
+            input.dataset.col = c;
+            // Pre-fill value if restoring from history or loading an example
+            if (preset && preset[r] && preset[r][c] !== undefined) {
+                input.value = preset[r][c];
             }
             matrixGrid.appendChild(input);
         }
     }
 }
 
-function readMatrixFromGrid() {
-    const n = parseInt(varCountInput.value, 10);
+// Reads a rectangular (rows x (cols + 1)) 2D array of strings from the DOM grid
+function readMatrixFromGrid(rows, cols) {
     const matrix = [];
-    for (let r = 0; r < n; r++) {
+    for (let r = 0; r < rows; r++) {
         const row = [];
-        for (let c = 0; c < n + 1; c++) {
+        // Loop through all variable columns plus the constant column
+        for (let c = 0; c < cols + 1; c++) {
             const cell = matrixGrid.querySelector(
                 `input[data-row="${r}"][data-col="${c}"]`
             );
             const val = cell.value.trim();
+            // Default blank inputs to "0" so the Python Fraction parser receives valid numbers
             row.push(val === "" ? "0" : val);
         }
         matrix.push(row);
