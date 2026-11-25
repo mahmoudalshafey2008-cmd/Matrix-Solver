@@ -15,48 +15,62 @@ const HISTORY_KEY = "matrix_solver_history_v1";
 
 function buildGrid(rows, cols, preset = null) {
     matrixGrid.innerHTML = "";
-    // Define CSS grid columns: `cols` variable inputs + 1 vertical divider + 1 constant column
-    matrixGrid.style.gridTemplateColumns = `repeat(${cols}, auto) auto auto`;
+    matrixGrid.className = "input-matrix-container";
 
-    // Render column headers x1, x2, ..., x_cols
+    const gridTemplate = `repeat(${cols}, 72px) 6px 72px`;
+
+    // 1. Column headers row (outside the top of the brackets)
+    const headerRow = document.createElement("div");
+    headerRow.className = "input-headers-row";
+    headerRow.style.gridTemplateColumns = gridTemplate;
+
     for (let c = 0; c < cols; c++) {
         const header = document.createElement("div");
         header.className = "grid-header";
         header.textContent = `x${c + 1}`;
-        matrixGrid.appendChild(header);
+        headerRow.appendChild(header);
     }
-    // Empty header cell above the vertical divider line
-    matrixGrid.appendChild(document.createElement("div"));
+    // Spacer above the augmented divider
+    headerRow.appendChild(document.createElement("div"));
 
-    // Header cell for the constants column (b)
     const constHeader = document.createElement("div");
     constHeader.className = "grid-header";
     constHeader.textContent = "b";
-    matrixGrid.appendChild(constHeader);
+    headerRow.appendChild(constHeader);
+    matrixGrid.appendChild(headerRow);
 
-    // Build `rows` equation rows, each having `cols + 1` input cells
+    // 2. Bracketed input cells container: [  cells | b  ]
+    const bracketBody = document.createElement("div");
+    bracketBody.className = "input-bracket-body";
+
+    const cellsGrid = document.createElement("div");
+    cellsGrid.className = "input-cells-grid";
+    cellsGrid.style.gridTemplateColumns = gridTemplate;
+
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols + 1; c++) {
-            // Insert the vertical augmented-matrix divider right before the last column (b)
             if (c === cols) {
                 const divider = document.createElement("div");
                 divider.className = "divider";
-                matrixGrid.appendChild(divider);
+                cellsGrid.appendChild(divider);
             }
             const input = document.createElement("input");
             input.type = "text";
             input.className = "matrix-cell";
             input.placeholder = "0";
-            // Store row and column coordinates on each input for easy lookup later
             input.dataset.row = r;
             input.dataset.col = c;
-            // Pre-fill value if restoring from history or loading an example
             if (preset && preset[r] && preset[r][c] !== undefined) {
                 input.value = preset[r][c];
             }
-            matrixGrid.appendChild(input);
+            cellsGrid.appendChild(input);
         }
     }
+
+    bracketBody.appendChild(createBracketSvg("left"));
+    bracketBody.appendChild(cellsGrid);
+    bracketBody.appendChild(createBracketSvg("right"));
+    matrixGrid.appendChild(bracketBody);
 }
 
 // Reads a rectangular (rows x (cols + 1)) 2D array of strings from the DOM grid
@@ -101,6 +115,94 @@ async function callSolveApi(matrix, method, numVars) {
     return data;
 }
 
+function createBracketSvg(side) {
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 12 100");
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.classList.add("bracket-svg");
+
+    const path = document.createElementNS(svgNS, "path");
+    // Left bracket: top-right -> top-left -> bottom-left -> bottom-right
+    // Right bracket: top-left -> top-right -> bottom-right -> bottom-left
+    const d =
+        side === "left"
+            ? "M 11 2 L 2 2 L 2 98 L 11 98"
+            : "M 1 2 L 10 2 L 10 98 L 1 98";
+
+    path.setAttribute("d", d);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "currentColor");
+    path.setAttribute("stroke-width", "3");
+    path.setAttribute("vector-effect", "non-scaling-stroke");
+    path.setAttribute("stroke-linecap", "square");
+
+    svg.appendChild(path);
+    return svg;
+}
+
+function buildBracketedMatrixElement(matrixLines) {
+    const container = document.createElement("div");
+    container.className = "bracket-matrix-row";
+
+    const table = document.createElement("table");
+    table.className = "matrix-cells-table";
+
+    matrixLines.forEach((rawLine) => {
+        const inner = rawLine.slice(1, -1);
+        const [coeffsPart, constPart] = inner.split("|");
+        const coeffs = coeffsPart.trim().split(/\s+/).filter(Boolean);
+
+        const tr = document.createElement("tr");
+        coeffs.forEach((val) => {
+            const td = document.createElement("td");
+            td.textContent = val;
+            tr.appendChild(td);
+        });
+
+        if (constPart !== undefined) {
+            const tdConst = document.createElement("td");
+            tdConst.className = "aug-separator";
+            tdConst.textContent = constPart.trim();
+            tr.appendChild(tdConst);
+        }
+
+        table.appendChild(tr);
+    });
+
+    container.appendChild(createBracketSvg("left"));
+    container.appendChild(table);
+    container.appendChild(createBracketSvg("right"));
+
+    return container;
+}
+
+function formatStepContent(stepText) {
+    const lines = stepText.split("\n");
+    const matrixLines = lines.filter((line) => line.startsWith("[") && line.endsWith("]"));
+
+    if (matrixLines.length === 0) {
+        const pre = document.createElement("div");
+        pre.className = "math-note-line";
+        pre.textContent = stepText;
+        return pre;
+    }
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "math-step-display";
+
+    const opLine = lines.find((line) => !line.startsWith("["));
+    if (opLine) {
+        const opDiv = document.createElement("div");
+        opDiv.className = "math-op-label";
+        opDiv.textContent = opLine;
+        wrapper.appendChild(opDiv);
+    }
+
+    wrapper.appendChild(buildBracketedMatrixElement(matrixLines));
+    return wrapper;
+}
+
 function renderMethodResult(title, data) {
     const block = document.createElement("div");
     block.className = "method-block";
@@ -139,11 +241,8 @@ function renderMethodResult(title, data) {
         stepTitle.className = "step-title";
         stepTitle.textContent = `Step ${idx + 1}`;
 
-        const pre = document.createElement("pre");
-        pre.textContent = stepText;
-
         stepCard.appendChild(stepTitle);
-        stepCard.appendChild(pre);
+        stepCard.appendChild(formatStepContent(stepText));
         block.appendChild(stepCard);
     });
 

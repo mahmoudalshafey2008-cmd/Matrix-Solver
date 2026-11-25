@@ -179,7 +179,30 @@ button {
     background: var(--text);
     margin: 0 0.25rem;
 }
+.input-matrix-container {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
 
+.input-headers-row {
+    display: grid;
+    gap: 0.45rem;
+    align-items: center;
+    padding: 0 15px; /* aligns headers above cells inside the left/right brackets */
+}
+
+.input-bracket-body {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 0.35rem;
+}
+
+.input-cells-grid {
+    display: inline-grid;
+    gap: 0.45rem;
+    align-items: center;
+}
 .error-box {
     margin-top: 1rem;
     padding: 0.75rem 1rem;
@@ -293,4 +316,56 @@ button {
     font-weight: 700;
     color: var(--primary);
     margin-bottom: 0.2rem;
+}
+.math-step-display {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.math-op-label {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.bracket-matrix-row {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 0.35rem;
+    padding: 0.25rem 0;
+}
+
+.bracket-svg {
+    width: 11px;
+    height: auto;
+    flex-shrink: 0;
+    overflow: visible;
+}
+
+.matrix-cells-table {
+    border-collapse: separate;
+    border-spacing: 0.85rem 0.25rem;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.matrix-cells-table td {
+    text-align: center;
+    min-width: 1.8rem;
+}
+
+.matrix-cells-table td.aug-separator {
+    border-left: 2px solid var(--text);
+    padding-left: 0.9rem;
+}
+
+.math-note-line {
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--text);
+    white-space: pre-wrap;
 }
