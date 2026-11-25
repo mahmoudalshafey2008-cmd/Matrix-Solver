@@ -139,139 +139,165 @@ def row_addition(matrix, target_row, source_row, const, steps):
 
 
 #function solves given matrix using Gauss elimination
-def solve_Gauss(matrix):
-    steps = []
-    steps.append("Starting matrix\n" + draw_matrix(matrix))
-    #we start with pivots at the beginning of the matrix
+def solve_Gauss(matrix, num_vars=None):
+    # Separate row count (equations) from column count (variables)
+    num_rows = len(matrix)
+    if num_vars is None:
+        num_vars = len(matrix[0]) - 1
+
+    steps = ["Starting matrix\n" + draw_matrix(matrix)]
     pivot_row = 0
-    for pivot_column in range(len(matrix)):
-        #variable that will hold the row value of the first non zero value in a column
-        #will hold an initial value any negative number will work
+
+    # Iterate through each variable column (not len(matrix), because num_vars can be > num_rows)
+    for pivot_col in range(num_vars):
+        # Stop early if we have already placed a pivot in every available equation row
+        if pivot_row >= num_rows:
+            break
+
+        # Search downward from pivot_row to num_rows for the first non-zero entry in this column
         found = -1
-        #check column in each row, starting from pivot to matrix length - 1
-        for row in range(pivot_row, len(matrix)):
-            #if the column has a non zero value record the row in found
-            if matrix[row][pivot_column] != 0:
+        for row in range(pivot_row, num_rows):
+            if matrix[row][pivot_col] != 0:
                 found = row
                 break
-        #all of the column elements were 0 then we skip this iteration
+
+        # If the entire column below pivot_row is zero, this variable is a free variable; skip to next column
         if found == -1:
             continue
-        #if the first non zero row isn't pivot
+
+        # Swap the row containing the non-zero entry up into the current pivot_row position
         if found != pivot_row:
-            #we switch the found row to the pivot row
             row_switch(matrix, pivot_row, found, steps)
-        #if the first non zero element in the pivot row isn't equal to one
-        if matrix[pivot_row][pivot_column] != 1: 
-            #we multiply that element so it becomes equal to one
-            row_multiply(matrix, pivot_row, 1/matrix[pivot_row][pivot_column], steps)
-        #loop to check if the elements below the leading one in our pivot row are zero 
-        for row in range(pivot_row+1, len(matrix)):
-            #if they aren't zero
-            if matrix[row][pivot_column] != 0:
-                #we perform addition with "row" as target
-                #we multiply the pivot row by the negative of the element we want to clear (make it equal 0) devided by the leading 1
-                #for example we have x[0][0] = 1 and x[1][0] = 3
-                #so we multiply x[0][0] by -3 (-x[1][0]/x[0][0]) and perform addition
-                row_addition(matrix, row, pivot_row, -matrix[row][pivot_column]/matrix[pivot_row][pivot_column], steps)
-        #move to the next pivot 
+
+        # Scale the pivot row so the leading pivot entry becomes 1
+        if matrix[pivot_row][pivot_col] != 1:
+            row_multiply(matrix, pivot_row, 1 / matrix[pivot_row][pivot_col], steps)
+
+        # Eliminate all non-zero entries below the pivot in the current column
+        for row in range(pivot_row + 1, num_rows):
+            if matrix[row][pivot_col] != 0:
+                row_addition(
+                    matrix,
+                    row,
+                    pivot_row,
+                    -matrix[row][pivot_col] / matrix[pivot_row][pivot_col],
+                    steps,
+                )
+
+        # Advance to the next row for the next pivot
         pivot_row += 1
-    #check row by row regardless of pivot if a row is all 0 except the last element (the constant)
-    #this is to see if the matrix has no solutions
-    for row in range(len(matrix)):
-        all_zero = True
-        for col in range(len(matrix)):
-            if matrix[row][col] != 0:
-                all_zero = False
+
+    # Check every equation row for a contradiction: all num_vars coefficients are 0, but constant != 0
+    for row in range(num_rows):
+        all_zero = all(matrix[row][col] == 0 for col in range(num_vars))
         if all_zero and matrix[row][-1] != 0:
-            steps.append("R" + str(row + 1) + " reads 0 = " + str(matrix[row][-1]) + ", so there is no solution")
+            steps.append(f"R{row + 1} reads 0 = {matrix[row][-1]}, so there is no solution")
             return {"outcome": "none", "steps": steps, "solution": None}
-    #we check to see if the number of rows is less than the number of coeffiecient elements (infinite solutions)
-    if pivot_row < len(matrix):
+
+    # If there are fewer equations than variables (underdetermined) or fewer pivots than variables,
+    # at least one variable is free -> infinitely many solutions
+    if num_rows < num_vars or pivot_row < num_vars:
         steps.append("fewer pivots than variables, so there are infinitely many solutions")
         return {"outcome": "infinite", "steps": steps, "solution": None}
-    #matrix has a unique solution
-    else:
-        #assign a list with length of matrix that will hold our solution (x1, x2, x3... etc)
-        x = [0] * len(matrix)
-        #loop over the matrix from the bottom up
-        for row in range(len(matrix) - 1, -1, -1):
-            #total is the constant in our matrix row
-            total = matrix[row][-1]
-            text = str(total)
-            #columns here are to the right side of our leading ones
-            for column in range(row + 1, len(matrix)):
-                #find the value of x
-                total = total - matrix[row][column] * x[column]
-                #record our steps
-                text = text + " - (" + str(matrix[row][column]) + " * " + str(x[column]) + ")"
-            #after we finish calculating the x value for that row we assign its value to be equal to total
-            x[row] = total
-            #this if block exists because the last row has nothing to calculate, it just gives x = value, flat out
-            if row < len(matrix) - 1:
-                text = text + " = " + str(x[row])
-            steps.append("x" + str(row + 1) + " = " + text)
-        return {"outcome": "unique", "steps": steps, "solution": x}
+
+    # Back-substitution only runs when we have a unique solution (pivot_row == num_vars)
+    x = [0] * num_vars
+    for row in range(num_vars - 1, -1, -1):
+        total = matrix[row][-1]
+        text = str(total)
+        for col in range(row + 1, num_vars):
+            total = total - matrix[row][col] * x[col]
+            text = text + f" - ({matrix[row][col]} * {x[col]})"
+        x[row] = total
+        if row < num_vars - 1:
+            text = text + f" = {x[row]}"
+        steps.append(f"x{row + 1} = {text}")
+
+    return {"outcome": "unique", "steps": steps, "solution": x}
 
 
 #Gauss jordan function, this functions works like Gauss so i won't comment in it, i will highlight the diffirences when they come
-def solve_Gauss_jordan(matrix):
-    steps = []
-    steps.append("Starting matrix\n" + draw_matrix(matrix))
+def solve_Gauss_jordan(matrix, num_vars=None):
+    # Track equations (num_rows) and variables (num_vars) independently
+    num_rows = len(matrix)
+    if num_vars is None:
+        num_vars = len(matrix[0]) - 1
+
+    steps = ["Starting matrix\n" + draw_matrix(matrix)]
     pivot_row = 0
-    for pivot_column in range(len(matrix)):
+
+    # Iterate across variable columns up to num_vars
+    for pivot_col in range(num_vars):
+        # Stop if every equation row already has a pivot
+        if pivot_row >= num_rows:
+            break
+
+        # Find the first non-zero entry at or below pivot_row
         found = -1
-        for row in range(pivot_row, len(matrix)):
-            if matrix[row][pivot_column] != 0:
+        for row in range(pivot_row, num_rows):
+            if matrix[row][pivot_col] != 0:
                 found = row
                 break
+
+        # Skip free variable columns
         if found == -1:
             continue
+
+        # Move pivot candidate into pivot_row
         if found != pivot_row:
             row_switch(matrix, pivot_row, found, steps)
-        if matrix[pivot_row][pivot_column] != 1: 
-            row_multiply(matrix, pivot_row, 1/matrix[pivot_row][pivot_column], steps)
-        for row in range(len(matrix)):
-            #we also added (row != pivot_row) so to only affect the rows above/below the pivot and not the pivot itself
-            if row != pivot_row and matrix[row][pivot_column] != 0:
-                row_addition(matrix, row, pivot_row, -matrix[row][pivot_column]/matrix[pivot_row][pivot_column], steps)
+
+        # Normalize pivot entry to 1
+        if matrix[pivot_row][pivot_col] != 1:
+            row_multiply(matrix, pivot_row, 1 / matrix[pivot_row][pivot_col], steps)
+
+        # Eliminate entries both ABOVE and BELOW pivot_row across all num_rows
+        for row in range(num_rows):
+            if row != pivot_row and matrix[row][pivot_col] != 0:
+                row_addition(
+                    matrix,
+                    row,
+                    pivot_row,
+                    -matrix[row][pivot_col] / matrix[pivot_row][pivot_col],
+                    steps,
+                )
+
         pivot_row += 1
-    for row in range(len(matrix)):
-        all_zero = True
-        for col in range(len(matrix)):
-            if matrix[row][col] != 0:
-                all_zero = False
+
+    # Check for inconsistent equations (0 = non-zero constant)
+    for row in range(num_rows):
+        all_zero = all(matrix[row][col] == 0 for col in range(num_vars))
         if all_zero and matrix[row][-1] != 0:
-            steps.append("R" + str(row + 1) + " reads 0 = " + str(matrix[row][-1]) + ", so there is no solution")
+            steps.append(f"R{row + 1} reads 0 = {matrix[row][-1]}, so there is no solution")
             return {"outcome": "none", "steps": steps, "solution": None}
-    if pivot_row < len(matrix):
+
+    # Check for free variables when equations < variables or pivots < variables
+    if num_rows < num_vars or pivot_row < num_vars:
         steps.append("fewer pivots than variables, so there are infinitely many solutions")
         return {"outcome": "infinite", "steps": steps, "solution": None}
-    #in here the block is really simple
-    #every row has only 1 coefficient and 1 constant
-    #that elemenates all the need to calculate the value of x and we just need to read and store it
-    else:
-        x = [0] * len(matrix)
-        for row in range(len(matrix) - 1, -1, -1):
-            total = matrix[row][-1]
-            text = str(total)
-            x[row] = total
-            steps.append("x" + str(row + 1) + " = " + text)
-        return {"outcome": "unique", "steps": steps, "solution": x}
+
+    # Read off unique solution directly from the last column
+    x = [0] * num_vars
+    for row in range(num_vars - 1, -1, -1):
+        total = matrix[row][-1]
+        x[row] = total
+        steps.append(f"x{row + 1} = {total}")
+
+    return {"outcome": "unique", "steps": steps, "solution": x}
 
 
 #solve function dictates what elimination we use
-#just simple case statments we don't need to explain this part
-def solve(raw_matrix, method):
-    matrix = prepare_matrix(raw_matrix)
+#just simple case statements we don't need to explain this part
+# Pass num_vars through to prepare_matrix and the chosen elimination solver
+def solve(raw_matrix, method, num_vars=None):
+    matrix = prepare_matrix(raw_matrix, num_vars=num_vars)
     match method:
         case "gauss":
-            return solve_Gauss(matrix)
+            return solve_Gauss(matrix, num_vars=num_vars)
         case "jordan":
-            return solve_Gauss_jordan(matrix)
+            return solve_Gauss_jordan(matrix, num_vars=num_vars)
         case _:
             raise ValueError("unknown method")
-
 
 #show result just takes in our solution and prints out the steps and the x values if the matrix has a unique solution
 def show_result(result):
