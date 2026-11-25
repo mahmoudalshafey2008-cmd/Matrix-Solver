@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Matrix Elimination Solver</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Linear System & Matrix Solver</h1>
+            <p>Solve augmented matrices step-by-step using exact fraction arithmetic.</p>
+        </header>
+
+        <div class="layout">
+            <main class="card">
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="varCount">Variables (n):</label>
+                        <input type="number" id="varCount" min="1" max="10" value="3" />
+                    </div>
+
+                    <div class="control-group">
+                        <label for="methodSelect">Method:</label>
+                        <select id="methodSelect">
+                            <option value="gauss">Gaussian Elimination</option>
+                            <option value="jordan">Gauss-Jordan Elimination</option>
+                            <option value="both">Both Methods</option>
+                        </select>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="button" id="sampleBtn" class="btn-secondary">Load Example</button>
+                        <button type="button" id="clearBtn" class="btn-secondary">Clear</button>
+                    </div>
+                </div>
+
+                <div class="matrix-wrapper">
+                    <div id="matrixGrid" class="matrix-grid"></div>
+                </div>
+
+                <button type="button" id="solveBtn" class="btn-primary">Solve System</button>
+
+                <div id="errorBox" class="error-box hidden"></div>
+
+                <section id="resultsSection" class="results hidden">
+                    <h2>Results</h2>
+                    <div id="resultsContainer"></div>
+                </section>
+            </main>
+
+            <aside class="card history-panel">
+                <div class="history-header">
+                    <h2>History</h2>
+                    <button type="button" id="clearHistoryBtn" class="btn-link">Clear</button>
+                </div>
+                <p class="hint">Click a saved entry to restore it.</p>
+                <ul id="historyList" class="history-list"></ul>
+            </aside>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

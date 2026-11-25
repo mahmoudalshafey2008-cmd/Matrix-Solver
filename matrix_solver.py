@@ -145,8 +145,8 @@ def solve_Gauss(matrix):
             row_switch(matrix, pivot_row, found, steps)
         #if the first non zero element in the pivot row isn't equal to one
         if matrix[pivot_row][pivot_column] != 1: 
-           #we multiply that element so it becomes equal to one
-           row_multiply(matrix, pivot_row, 1/matrix[pivot_row][pivot_column], steps)
+            #we multiply that element so it becomes equal to one
+            row_multiply(matrix, pivot_row, 1/matrix[pivot_row][pivot_column], steps)
         #loop to check if the elements below the leading one in our pivot row are zero 
         for row in range(pivot_row+1, len(matrix)):
             #if they aren't zero
@@ -212,7 +212,7 @@ def solve_Gauss_jordan(matrix):
         if found != pivot_row:
             row_switch(matrix, pivot_row, found, steps)
         if matrix[pivot_row][pivot_column] != 1: 
-           row_multiply(matrix, pivot_row, 1/matrix[pivot_row][pivot_column], steps)
+            row_multiply(matrix, pivot_row, 1/matrix[pivot_row][pivot_column], steps)
         for row in range(len(matrix)):
             #we also added (row != pivot_row) so to only affect the rows above/below the pivot and not the pivot itself
             if row != pivot_row and matrix[row][pivot_column] != 0:
