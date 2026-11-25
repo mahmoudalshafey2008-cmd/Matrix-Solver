@@ -88,11 +88,11 @@ function hideError() {
     errorBox.textContent = "";
 }
 
-async function callSolveApi(matrix, method) {
+async function callSolveApi(matrix, method, numVars) {
     const res = await fetch("/api/solve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matrix, method }),
+        body: JSON.stringify({ matrix, method, num_vars: numVars }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -173,19 +173,30 @@ function renderHistory() {
         return;
     }
     history.forEach((item) => {
+        const rows = item.rows ?? item.n ?? 2;
+        const cols = item.cols ?? item.n ?? 3;
         const li = document.createElement("li");
         li.className = "history-item";
         li.innerHTML = `
-        <div class="history-meta">${item.n}×${item.n} (${item.method.toUpperCase()})</div>
-        <div>${item.summary}</div>
-    `;
+            <div class="history-meta">${rows}×${cols + 1} (${item.method.toUpperCase()})</div>
+            <div>${item.summary}</div>
+        `;
         li.addEventListener("click", () => {
-            varCountInput.value = item.n;
+            eqCountInput.value = rows;
+            varCountInput.value = cols;
             methodSelect.value = item.method;
-            buildGrid(item.n, item.matrix);
+            buildGrid(rows, cols, item.matrix);
         });
         historyList.appendChild(li);
     });
+}
+
+function handleDimensionChange() {
+    const rows = Math.min(10, Math.max(1, parseInt(eqCountInput.value, 10) || 1));
+    const cols = Math.min(10, Math.max(1, parseInt(varCountInput.value, 10) || 1));
+    eqCountInput.value = rows;
+    varCountInput.value = cols;
+    buildGrid(rows, cols);
 }
 
 solveBtn.addEventListener("click", async () => {
@@ -193,13 +204,14 @@ solveBtn.addEventListener("click", async () => {
     resultsContainer.innerHTML = "";
     resultsSection.classList.add("hidden");
 
-    const n = parseInt(varCountInput.value, 10);
-    if (isNaN(n) || n < 1 || n > 10) {
-        showError("Number of variables must be between 1 and 10.");
+    const rows = parseInt(eqCountInput.value, 10);
+    const cols = parseInt(varCountInput.value, 10);
+    if (isNaN(rows) || rows < 1 || rows > 10 || isNaN(cols) || cols < 1 || cols > 10) {
+        showError("Equations and variables must each be between 1 and 10.");
         return;
     }
 
-    const matrix = readMatrixFromGrid();
+    const matrix = readMatrixFromGrid(rows, cols);
     const method = methodSelect.value;
 
     solveBtn.disabled = true;
@@ -208,7 +220,7 @@ solveBtn.addEventListener("click", async () => {
     try {
         let summary = "";
         if (method === "gauss" || method === "both") {
-            const gaussData = await callSolveApi(matrix, "gauss");
+            const gaussData = await callSolveApi(matrix, "gauss", cols);
             renderMethodResult("Gaussian Elimination", gaussData);
             summary =
                 gaussData.outcome === "unique"
@@ -216,7 +228,7 @@ solveBtn.addEventListener("click", async () => {
                     : gaussData.outcome;
         }
         if (method === "jordan" || method === "both") {
-            const jordanData = await callSolveApi(matrix, "jordan");
+            const jordanData = await callSolveApi(matrix, "jordan", cols);
             renderMethodResult("Gauss-Jordan Elimination", jordanData);
             if (!summary) {
                 summary =
@@ -227,7 +239,7 @@ solveBtn.addEventListener("click", async () => {
         }
 
         resultsSection.classList.remove("hidden");
-        saveToHistory({ n, method, matrix, summary });
+        saveToHistory({ rows, cols, method, matrix, summary });
     } catch (err) {
         showError(err.message);
     } finally {
@@ -236,25 +248,23 @@ solveBtn.addEventListener("click", async () => {
     }
 });
 
-varCountInput.addEventListener("change", () => {
-    const n = Math.min(10, Math.max(1, parseInt(varCountInput.value, 10) || 1));
-    varCountInput.value = n;
-    buildGrid(n);
-});
+eqCountInput.addEventListener("change", handleDimensionChange);
+varCountInput.addEventListener("change", handleDimensionChange);
 
 sampleBtn.addEventListener("click", () => {
+    eqCountInput.value = 2;
     varCountInput.value = 3;
-    buildGrid(3, [
-        ["2", "1", "-1", "8"],
-        ["-3", "-1", "2", "-11"],
-        ["-2", "1", "2", "-3"],
+    buildGrid(2, 3, [
+        ["1", "2", "1", "4"],
+        ["0", "1", "-1", "2"],
     ]);
     hideError();
 });
 
 clearBtn.addEventListener("click", () => {
-    const n = parseInt(varCountInput.value, 10) || 3;
-    buildGrid(n);
+    const rows = parseInt(eqCountInput.value, 10) || 2;
+    const cols = parseInt(varCountInput.value, 10) || 3;
+    buildGrid(rows, cols);
     hideError();
     resultsSection.classList.add("hidden");
 });
@@ -282,6 +292,6 @@ matrixGrid.addEventListener("keydown", (event) => {
     }
 });
 
-// Initialize default 3x3 grid and history
-buildGrid(3);
+// Initialize default 2 equations x 3 variables grid and history
+buildGrid(2, 3);
 renderHistory();
