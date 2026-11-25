@@ -169,8 +169,8 @@ function renderHistory() {
         const li = document.createElement("li");
         li.className = "history-item";
         li.innerHTML = `
-      <div class="history-meta">${item.n}×${item.n} (${item.method.toUpperCase()})</div>
-      <div>${item.summary}</div>
+        <div class="history-meta">${item.n}×${item.n} (${item.method.toUpperCase()})</div>
+        <div>${item.summary}</div>
     `;
         li.addEventListener("click", () => {
             varCountInput.value = item.n;

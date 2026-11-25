@@ -7,27 +7,45 @@ MAX = 10
 
 
 #function checks the raw input and returns a new matrix of Fractions
-def prepare_matrix(raw_matrix):
-    length = len(raw_matrix)
-    #the number of rows must be between 1 and MAX (10)
-    if length < 1 or length > MAX:
-        raise ValueError("invalid matrix: it must have between 1 and 10 rows")
-    #each row needs length + 1 elements to be an augmented matrix
-    for row in range(length):
-        if len(raw_matrix[row]) != length + 1:
-            raise ValueError("invalid matrix: row " + str(row + 1) + " must have " + str(length + 1) + " entries")
-    #new list so raw_matrix stays untouched
+# Accepts an optional num_vars parameter so the number of variables can differ from the number of equations (rows)
+def prepare_matrix(raw_matrix, num_vars=None):
+    # Count how many equations (rows) were passed in
+    num_rows = len(raw_matrix)
+    # Validate that the row count is within the allowed range (1 to MAX)
+    if num_rows < 1 or num_rows > MAX:
+        raise ValueError(f"invalid matrix: rows must be between 1 and {MAX}")
+
+    # If the caller did not explicitly pass num_vars, infer it from the first row
+    # (total columns minus 1, because the last column is the constant b)
+    if num_vars is None:
+        if len(raw_matrix[0]) < 2:
+            raise ValueError("invalid matrix: must have at least 1 variable and 1 constant")
+        num_vars = len(raw_matrix[0]) - 1
+
+    # Validate that the variable count is also within 1 to MAX
+    if num_vars < 1 or num_vars > MAX:
+        raise ValueError(f"invalid matrix: variables must be between 1 and {MAX}")
+
+    # Every row in an augmented matrix must have num_vars coefficients + 1 constant column
+    expected_cols = num_vars + 1
+    for row in range(num_rows):
+        if len(raw_matrix[row]) != expected_cols:
+            raise ValueError(
+                f"invalid matrix: row {row + 1} must have {expected_cols} entries ({num_vars} coefficients + 1 constant)"
+            )
+
+    # Create a brand-new matrix of exact Fraction objects so raw_matrix is not modified
     new_matrix = []
-    for row in range(length):
+    for row in range(num_rows):
         new_row = []
-        for column in range(length + 1):
+        # Loop over all expected columns (coefficients + constant) instead of length + 1
+        for col in range(expected_cols):
             try:
-                new_row.append(fractions.Fraction(raw_matrix[row][column]))
-            #not a number (like "matrix") or a fraction with zero division (like "1/0")
+                new_row.append(fractions.Fraction(raw_matrix[row][col]))
             except (ValueError, ZeroDivisionError):
-                raise ValueError("row " + str(row + 1) + ", column " + str(column + 1) + " is not a valid number")
+                raise ValueError(f"row {row + 1}, column {col + 1} is not a valid number")
         new_matrix.append(new_row)
-    #the finished matrix goes back so other functions can use it
+
     return new_matrix
 
 
